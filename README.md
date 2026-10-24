@@ -7,7 +7,11 @@ Touch-driven granular audio stretcher. Load a sample (or your own file) and drag
 - **3 fingers** — 3rd finger vertical = drive/wavefold, horizontal = bitcrush; squash the triangle = stutter
 - **4+ fingers** — chaos
 - Desktop: hold **Shift** while dragging for a mirrored 2nd finger, **Alt** for 3
-- `space` play/stop · `h` hold (latch values on release) · `r` reset · `1–5` samples · drag & drop files
+- `space` play/stop · `h` hold (latch values on release) · `r` reset · `1–5` samples
+- **Your own audio**: tap **+ upload your own** on the start screen, the **+ add** / **load** keys, or drag & drop
+  (several at once is fine). mp3, wav, m4a, flac, ogg… whatever the browser can decode. Uploads get their own
+  keys and are saved in the browser on that device (IndexedDB), so they're still there next visit; × removes one.
+  Files longer than 4 minutes are trimmed to the first 4 minutes to keep phones happy.
 
 Run locally: `npm start` → http://localhost:3000
 

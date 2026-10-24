@@ -125,6 +125,9 @@ html, body {
   font-weight: 600;
 }
 .power:active { transform: translateY(1px); }
+.splash-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.power.ghost { background: transparent; color: var(--white); box-shadow: inset 0 0 0 1.5px #5a5954; display: inline-block; }
+.power.ghost:hover { box-shadow: inset 0 0 0 1.5px var(--white); }
 .splash-help {
   list-style: none; padding: 0; margin: 26px 0 0;
   font-size: 11px; line-height: 2; color: #9a9890;
@@ -216,6 +219,24 @@ html, body {
 .key.toggle.active { background: var(--orange); color: #111; }
 .key.toggle.active .k-sub { color: #4a1b00; }
 .key .num { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
+.key .num.mine { background: transparent; box-shadow: inset 0 0 0 1.5px var(--orange); }
+.key.user { position: relative; }
+.key.user .k-top { max-width: calc(100% - 10px); font-size: 12px; overflow: hidden; white-space: nowrap; text-overflow: clip; }
+.key.user .x {
+  position: absolute; top: 2px; right: 3px;
+  width: 18px; height: 18px; line-height: 16px; text-align: center;
+  font-size: 13px; color: var(--ink-2); border-radius: 50%;
+}
+.key.user .x:hover { background: rgba(0,0,0,.08); color: var(--ink); }
+.key.user.active .x { color: #9a9890; }
+.key.add { background: transparent; box-shadow: none; border: 1.5px dashed #a9a59c; }
+.key.add .k-top { font-size: 18px; line-height: 1; }
+#samples { position: relative; overflow-x: auto; scrollbar-width: none; flex-wrap: nowrap; min-width: 0; padding-bottom: 2px; }
+#samples::-webkit-scrollbar { display: none; }
+#samples.more { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent); }
+.keys > .key-group:first-child { flex: 1; min-width: 0; max-width: 100%; }
+.keys { min-width: 0; max-width: 100%; }
+.key { flex: none; }
 
 @media (max-width: 760px) {
   #app { gap: 8px; }
@@ -229,4 +250,8 @@ html, body {
   .key-group { flex-wrap: nowrap; }
   .overview-wrap { height: 34px; }
   .name { display: none; }
+}
+
+@media (min-width: 761px) {
+  .key.user { width: 78px; }
 }

@@ -129,12 +129,104 @@
     b.addEventListener('click', () => loadSample(s));
     sampleWrap.appendChild(b);
   });
+  const addKey = document.createElement('label');
+  addKey.className = 'key add';
+  addKey.title = 'Add your own audio';
+  addKey.htmlFor = 'file';
+  addKey.innerHTML = '<span class="k-top">+</span><span class="k-sub">add</span>';
+  sampleWrap.appendChild(addKey);
+  requestAnimationFrame(() => updateKeyFade());
+
+  function setActiveKey(id) {
+    document.querySelectorAll('#samples .key').forEach((k) => {
+      k.classList.toggle('active', k.dataset.id === id);
+      if (k.dataset.id === id) {
+        // scroll only the key row (scrollIntoView would also shift the page)
+        const l = k.offsetLeft - sampleWrap.offsetLeft, r = l + k.offsetWidth;
+        if (l < sampleWrap.scrollLeft) sampleWrap.scrollTo({ left: l, behavior: 'smooth' });
+        else if (r > sampleWrap.scrollLeft + sampleWrap.clientWidth) sampleWrap.scrollTo({ left: r - sampleWrap.clientWidth, behavior: 'smooth' });
+      }
+    });
+  }
+  function updateKeyFade() {
+    const atEnd = sampleWrap.scrollLeft + sampleWrap.clientWidth >= sampleWrap.scrollWidth - 2;
+    sampleWrap.classList.toggle('more', !atEnd);
+  }
+  sampleWrap.addEventListener('scroll', updateKeyFade, { passive: true });
+  window.addEventListener('resize', updateKeyFade);
+
+  // ---------- my sounds (uploaded files, kept in IndexedDB on this device) ----------
+  const MAX_SECONDS = 240; // longer files are trimmed so phones don't run out of memory
+  const userFiles = []; // {id, name, data: ArrayBuffer}
+  let dbP = null;
+  function db() {
+    if (!dbP) {
+      dbP = new Promise((res, rej) => {
+        const r = indexedDB.open('sd1', 1);
+        r.onupgradeneeded = () => r.result.createObjectStore('files', { keyPath: 'id' });
+        r.onsuccess = () => res(r.result);
+        r.onerror = () => rej(r.error);
+      });
+    }
+    return dbP;
+  }
+  async function dbDo(mode, fn) {
+    try {
+      const d = await db();
+      return await new Promise((res, rej) => {
+        const tx = d.transaction('files', mode);
+        const req = fn(tx.objectStore('files'));
+        tx.oncomplete = () => res(req && req.result);
+        tx.onerror = () => rej(tx.error);
+      });
+    } catch (err) {
+      console.warn('storage unavailable', err);
+      return null;
+    }
+  }
+
+  function shortName(name) {
+    return name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ').trim().slice(0, 6) || 'file';
+  }
+
+  function renderUserKeys() {
+    sampleWrap.querySelectorAll('.key.user').forEach((k) => k.remove());
+    for (const u of userFiles) {
+      const b = document.createElement('button');
+      b.className = 'key user' + (state.sample === u.id ? ' active' : '');
+      b.dataset.id = u.id;
+      b.title = u.name;
+      b.innerHTML = `<span class="k-top"></span><span class="k-sub"><span class="num mine"></span>my</span><span class="x" title="Remove">×</span>`;
+      b.querySelector('.k-top').textContent = shortName(u.name);
+      b.addEventListener('click', (e) => {
+        if (e.target.classList.contains('x')) removeUser(u.id);
+        else loadUser(u);
+      });
+      sampleWrap.insertBefore(b, addKey);
+    }
+    updateKeyFade();
+  }
+
+  async function removeUser(id) {
+    const i = userFiles.findIndex((u) => u.id === id);
+    if (i >= 0) userFiles.splice(i, 1);
+    renderUserKeys();
+    await dbDo('readwrite', (s) => s.delete(id));
+  }
+
+  dbDo('readonly', (s) => s.getAll()).then((rows) => {
+    if (!rows || !rows.length) return;
+    rows.sort((a, b) => a.added - b.added);
+    userFiles.push(...rows);
+    renderUserKeys();
+  });
 
   // ---------- audio ----------
   async function initAudio() {
     if (state.ctx) return;
     try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (_) {}
     const ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
+    ctx.resume(); // while we're still inside the user gesture (iOS)
     await ctx.audioWorklet.addModule('worklet.js');
     const node = new AudioWorkletNode(ctx, 'stretch-processor', { numberOfInputs: 0, outputChannelCount: [2] });
     const filter = ctx.createBiquadFilter();
@@ -169,10 +261,8 @@
     });
   }
 
-  function computePeaks(buf) {
+  function computePeaks(L, R, sr) {
     const block = 128;
-    const L = buf.getChannelData(0);
-    const R = buf.numberOfChannels > 1 ? buf.getChannelData(1) : L;
     const n = Math.ceil(L.length / block);
     const peaks = new Float32Array(n);
     let max = 0;
@@ -188,55 +278,72 @@
     }
     state.peaks = peaks;
     state.peakMax = max || 1;
-    state.peakRate = buf.sampleRate / block;
+    state.peakRate = sr / block;
   }
 
   async function useBuffer(buf, name) {
-    computePeaks(buf);
-    state.duration = buf.duration;
-    const L = new Float32Array(buf.getChannelData(0));
-    const R = buf.numberOfChannels > 1 ? new Float32Array(buf.getChannelData(1)) : new Float32Array(L);
+    const len = Math.min(buf.length, Math.floor(MAX_SECONDS * buf.sampleRate));
+    const L = buf.getChannelData(0).slice(0, len);
+    const R = buf.numberOfChannels > 1 ? buf.getChannelData(1).slice(0, len) : L.slice();
+    computePeaks(L, R, buf.sampleRate);
+    state.duration = len / buf.sampleRate;
     state.node.port.postMessage({ type: 'load', L, R, sr: buf.sampleRate }, [L.buffer, R.buffer]);
     state.posAt = 0;
     state.posT = state.ctx.currentTime;
-    $('#file-name').textContent = name;
+    $('#file-name').textContent = name + (len < buf.length ? ' (first ' + fmtTime(MAX_SECONDS).slice(0, 5) + ')' : '');
     play(true);
   }
 
-  async function loadSample(s) {
-    await powerOn();
-    if (state.loading) return;
+  // decode + play an ArrayBuffer; returns false if it couldn't be decoded
+  async function playData(data, id, name) {
+    await ensureAudio();
     state.loading = true;
-    document.querySelectorAll('#samples .key').forEach((k) => k.classList.toggle('active', k.dataset.id === s.id));
+    $('#file-name').textContent = 'decoding…';
     try {
-      const res = await fetch(s.file);
-      const buf = await decode(await res.arrayBuffer());
-      state.sample = s.id;
-      await useBuffer(buf, s.label + '.mp3');
+      const buf = await decode(data.slice(0)); // decodeAudioData detaches its input
+      state.sample = id;
+      setActiveKey(id);
+      await useBuffer(buf, name);
+      return true;
     } catch (err) {
       console.error(err);
-      $('#file-name').textContent = 'load failed';
+      $('#file-name').textContent = "can't decode " + name;
+      return false;
     } finally {
       state.loading = false;
     }
   }
 
-  async function loadFile(file) {
-    if (!file) return;
-    await powerOn();
-    state.loading = true;
-    $('#file-name').textContent = 'decoding…';
+  async function loadSample(s) {
+    if (state.loading) return;
     try {
-      const buf = await decode(await file.arrayBuffer());
-      document.querySelectorAll('#samples .key').forEach((k) => k.classList.remove('active'));
-      state.sample = null;
-      await useBuffer(buf, file.name);
+      const res = await fetch(s.file);
+      await playData(await res.arrayBuffer(), s.id, s.label + '.mp3');
     } catch (err) {
       console.error(err);
-      $('#file-name').textContent = "can't decode that file";
-    } finally {
-      state.loading = false;
+      $('#file-name').textContent = 'load failed';
     }
+  }
+
+  function loadUser(u) {
+    if (!state.loading) return playData(u.data, u.id, u.name);
+  }
+
+  async function addFiles(files) {
+    files = [...files].filter(Boolean);
+    let last = null;
+    for (const file of files) {
+      const data = await file.arrayBuffer();
+      const u = { id: 'u' + Date.now() + Math.random().toString(36).slice(2, 6), name: file.name, data, added: Date.now() };
+      // only keep files we can actually decode
+      if (!(await playData(data, u.id, file.name))) continue;
+      userFiles.push(u);
+      last = u;
+      await dbDo('readwrite', (s) => s.put(u));
+    }
+    renderUserKeys();
+    if (last) setActiveKey(state.sample);
+    if (files.length && !last) $('#file-name').textContent = files.length > 1 ? "couldn't decode those files" : "can't decode " + files[0].name;
   }
 
   function play(on) {
@@ -249,17 +356,28 @@
   }
 
   let powered = false;
+  let audioP = null;
+  function ensureAudio() {
+    if (!audioP) {
+      powered = true;
+      audioP = initAudio().then(() => {
+        $('#splash').classList.add('gone');
+        return state.ctx.resume();
+      });
+    }
+    return audioP;
+  }
   async function powerOn() {
-    if (powered) return;
-    powered = true;
-    await initAudio();
-    await state.ctx.resume();
-    $('#splash').classList.add('gone');
-    if (!state.peaks) await loadSample(SAMPLES[0]);
+    await ensureAudio();
+    if (!state.peaks && !state.loading) await loadSample(SAMPLES[0]);
   }
 
+  // picking a file: unlock audio inside the tap, but don't start the demo loop
+  for (const el of document.querySelectorAll('label[for="file"], label.key.wide')) {
+    el.addEventListener('click', (e) => { e.stopPropagation(); ensureAudio(); });
+  }
   $('#splash').addEventListener('click', () => powerOn());
-  $('#file').addEventListener('change', (e) => { loadFile(e.target.files[0]); e.target.value = ''; });
+  $('#file').addEventListener('change', (e) => { addFiles(e.target.files); e.target.value = ''; });
   $('#play').addEventListener('click', async () => { await powerOn(); play(!state.playing); });
   $('#hold').addEventListener('click', () => setHold(!state.hold));
   $('#reset').addEventListener('click', reset);
@@ -282,8 +400,7 @@
   window.addEventListener('drop', (e) => {
     e.preventDefault();
     drop.classList.remove('show');
-    const f = e.dataTransfer.files && e.dataTransfer.files[0];
-    if (f) loadFile(f);
+    if (e.dataTransfer.files && e.dataTransfer.files.length) addFiles(e.dataTransfer.files);
   });
 
   // keyboard

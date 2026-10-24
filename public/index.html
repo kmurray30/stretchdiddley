@@ -32,12 +32,16 @@
           <div class="splash-inner">
             <div class="splash-logo">SD-1</div>
             <div class="splash-sub">granular stretch instrument</div>
-            <button id="power" class="power">● power on</button>
+            <div class="splash-actions">
+              <button id="power" class="power">● power on</button>
+              <label for="file" class="power ghost">+ upload your own</label>
+            </div>
             <ul class="splash-help mono">
               <li><b>1 finger</b> ↕ pitch &nbsp; ↔ speed</li>
               <li><b>2 fingers</b> pinch volume &nbsp; twist filter</li>
               <li><b>3 fingers</b> 3rd ↕ drive &nbsp; ↔ crush &nbsp; squash stutter</li>
               <li class="desk">mouse: hold <b>shift</b> = 2 fingers, <b>alt</b> = 3</li>
+              <li>mp3 · wav · m4a · flac · ogg — <span class="desk">drop files anywhere · </span>saved on this device</li>
             </ul>
           </div>
         </div>
@@ -55,7 +59,7 @@
       <div class="key-group" id="samples"></div>
       <div class="key-group">
         <label class="key wide" title="Load your own audio">
-          <input id="file" type="file" accept="audio/*,.mp3,.wav,.m4a,.ogg,.flac" hidden />
+          <input id="file" type="file" accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg,.oga,.opus,.flac,.aif,.aiff,.webm,.mp4" multiple hidden />
           <span class="k-top">load</span><span class="k-sub">file</span>
         </label>
         <button class="key" id="play" title="Play / stop (space)"><span class="k-top" id="play-icon">▶</span><span class="k-sub">space</span></button>
