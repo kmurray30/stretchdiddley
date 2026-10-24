@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#d8d5ce" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <title>Stretchdiddley SD-1</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app">
+    <header class="bar">
+      <div class="brand">
+        <span class="model">SD-1</span>
+        <span class="name">stretchdiddley</span>
+      </div>
+      <div class="status">
+        <span id="file-name" class="mono">—</span>
+        <span id="clock" class="mono">00:00.00</span>
+        <span id="led" class="led"></span>
+      </div>
+    </header>
+
+    <main class="screen-wrap">
+      <div class="screen">
+        <canvas id="stage"></canvas>
+        <div id="splash" class="splash">
+          <div class="splash-inner">
+            <div class="splash-logo">SD-1</div>
+            <div class="splash-sub">granular stretch instrument</div>
+            <button id="power" class="power">● power on</button>
+            <ul class="splash-help mono">
+              <li><b>1 finger</b> ↕ pitch &nbsp; ↔ speed</li>
+              <li><b>2 fingers</b> pinch volume &nbsp; twist filter</li>
+              <li><b>3 fingers</b> 3rd ↕ drive &nbsp; ↔ crush &nbsp; squash stutter</li>
+              <li class="desk">mouse: hold <b>shift</b> = 2 fingers, <b>alt</b> = 3</li>
+            </ul>
+          </div>
+        </div>
+        <div id="drop" class="drop">drop audio file</div>
+      </div>
+    </main>
+
+    <section class="readouts" id="readouts"></section>
+
+    <div class="overview-wrap">
+      <canvas id="overview"></canvas>
+    </div>
+
+    <footer class="keys">
+      <div class="key-group" id="samples"></div>
+      <div class="key-group">
+        <label class="key wide" title="Load your own audio">
+          <input id="file" type="file" accept="audio/*,.mp3,.wav,.m4a,.ogg,.flac" hidden />
+          <span class="k-top">load</span><span class="k-sub">file</span>
+        </label>
+        <button class="key" id="play" title="Play / stop (space)"><span class="k-top" id="play-icon">▶</span><span class="k-sub">space</span></button>
+        <button class="key toggle" id="hold" title="Latch values when you let go (H)"><span class="k-top">hold</span><span class="k-sub">h</span></button>
+        <button class="key" id="reset" title="Reset everything (R)"><span class="k-top">rst</span><span class="k-sub">r</span></button>
+      </div>
+    </footer>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
